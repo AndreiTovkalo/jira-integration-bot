@@ -1,6 +1,6 @@
 import TelegramBot, {Message, Metadata} from 'node-telegram-bot-api';
 import axios from 'axios';
-import { createJiraIssue, attachFileToIssue } from './jira';
+import {createJiraIssue, attachFileToIssue, getActiveSprintId} from './jira';
 import {parseSmartMessage} from "./parser";
 
 
@@ -13,6 +13,7 @@ bot.on('message', async (msg: Message, metadata: Metadata) => {
 
 
   const task = parseSmartMessage(msg.text ? msg.text : msg.caption!);
+  const sprintId = await getActiveSprintId();
   const issueData = {
     fields: {
       project: { key: process.env.JIRA_PROJECT_KEY },
@@ -34,7 +35,8 @@ bot.on('message', async (msg: Message, metadata: Metadata) => {
             ]
           }
         ]
-      }
+      },
+        ...(sprintId && {'customfield_10020': sprintId})
     }
   } as any;
 

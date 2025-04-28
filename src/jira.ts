@@ -19,6 +19,29 @@ export async function createJiraIssue(data: any) {
   return res.data;
 }
 
+export async function getActiveSprintId(): Promise<number | null> {
+  try {
+    const boardId = process.env.JIRA_BOARD_ID!;
+    const res = await axios.get(
+      `https://your-domain.atlassian.net/rest/agile/1.0/board/${boardId}/sprint?state=active`,
+      {
+        auth: {
+          username: process.env.JIRA_EMAIL!,
+          password: process.env.JIRA_API_TOKEN!,
+        },
+      }
+    );
+    const activeSprints = res.data.values;
+    if (activeSprints.length > 0) {
+      return activeSprints[0].id;
+    }
+    return null;
+  } catch (error: any) {
+    console.error('Не вдалося отримати активний спринт', error.response?.data || error);
+    return null;
+  }
+}
+
 export async function attachFileToIssue(issueKey: string, fileBuffer: any, filename: string) {
   const FormData = (await import('form-data')).default;
   const form = new FormData();
