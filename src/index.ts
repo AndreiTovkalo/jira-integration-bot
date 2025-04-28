@@ -41,7 +41,6 @@ bot.on('message', async (msg: Message, metadata: Metadata) => {
   if (task.assignee) {
     issueData.fields.assignee = { id: task.assignee };
   }
-
   try {
     const result = await createJiraIssue(issueData);
     const issueKey = result.key;
