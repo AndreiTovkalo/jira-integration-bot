@@ -24,14 +24,9 @@ bot.on('message', (msg, metadata) => __awaiter(void 0, void 0, void 0, function*
     if (!((_a = msg.text) === null || _a === void 0 ? void 0 : _a.toLowerCase().startsWith('task:')) && !((_b = msg.caption) === null || _b === void 0 ? void 0 : _b.toLowerCase().startsWith("task:")) && !((_c = msg.text) === null || _c === void 0 ? void 0 : _c.startsWith('/')))
         return;
     const task = (0, parser_1.parseSmartMessage)(msg.text ? msg.text : msg.caption);
+    const sprintId = yield (0, jira_1.getActiveSprintId)();
     const issueData = {
-        fields: {
-            project: { key: process.env.JIRA_PROJECT_KEY },
-            summary: task.title,
-            issuetype: { name: task.issueType },
-            priority: { name: task.priority },
-            labels: task.labels,
-            description: {
+        fields: Object.assign({ project: { key: process.env.JIRA_PROJECT_KEY }, summary: task.title, issuetype: { name: task.issueType }, priority: { name: task.priority }, labels: task.labels, description: {
                 type: 'doc',
                 version: 1,
                 content: [
@@ -45,8 +40,7 @@ bot.on('message', (msg, metadata) => __awaiter(void 0, void 0, void 0, function*
                         ]
                     }
                 ]
-            }
-        }
+            } }, (sprintId && { 'customfield_10020': sprintId }))
     };
     if (task.assignee) {
         issueData.fields.assignee = { id: task.assignee };
@@ -60,12 +54,12 @@ bot.on('message', (msg, metadata) => __awaiter(void 0, void 0, void 0, function*
             const fileRes = yield axios_1.default.get(fileLink, { responseType: 'stream' });
             yield (0, jira_1.attachFileToIssue)(issueKey, fileRes.data, file.file_name || 'file.jpg');
         }
-        yield bot.sendMessage(msg.chat.id, `✅ Створено задачу в Jira: ${issueKey}\n👉${process.env.JIRA_URL}/browse/${issueKey}`);
-        yield bot.sendSticker(msg.chat.id, `CAACAgEAAxkBAAEOX_poDlp4q9qtZbx6JtYFCePuUDrxPwACgwEAAnY3dj8x5r4EoeawcTYE`);
+        yield bot.sendMessage(msg.chat.id, `✅ Створено задачу в Jira: ${issueKey}\n👉${process.env.JIRA_URL}/browse/${issueKey}`, { message_thread_id: msg.message_thread_id });
+        yield bot.sendSticker(msg.chat.id, `CAACAgEAAxkBAAEOX_poDlp4q9qtZbx6JtYFCePuUDrxPwACgwEAAnY3dj8x5r4EoeawcTYE`, { message_thread_id: msg.message_thread_id });
     }
     catch (error) {
         console.error(((_e = error.response) === null || _e === void 0 ? void 0 : _e.data) || error);
-        yield bot.sendMessage(msg.chat.id, `❌ Не вдалося створити задачу.\n${JSON.stringify((_f = error.response) === null || _f === void 0 ? void 0 : _f.data.errors)}`);
-        yield bot.sendSticker(msg.chat.id, 'CAACAgEAAxkBAAEOYAABaA5fv4UQMwABj3mJJaJ6GNQDe3YrAAKEAQACdjd2P-GcU4Z766ifNgQ');
+        yield bot.sendMessage(msg.chat.id, `❌ Не вдалося створити задачу.\n${JSON.stringify((_f = error.response) === null || _f === void 0 ? void 0 : _f.data.errors)}`, { message_thread_id: msg.message_thread_id });
+        yield bot.sendSticker(msg.chat.id, 'CAACAgEAAxkBAAEOYAABaA5fv4UQMwABj3mJJaJ6GNQDe3YrAAKEAQACdjd2P-GcU4Z766ifNgQ', { message_thread_id: msg.message_thread_id });
     }
 }));

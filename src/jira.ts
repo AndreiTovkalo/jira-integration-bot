@@ -22,15 +22,18 @@ export async function createJiraIssue(data: any) {
 export async function getActiveSprintId(): Promise<number | null> {
   try {
     const boardId = process.env.JIRA_BOARD_ID!;
+    const auth = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_API_TOKEN}`).toString('base64');
+
     const res = await axios.get(
-      `https://your-domain.atlassian.net/rest/agile/1.0/board/${boardId}/sprint?state=active`,
+      `${process.env.JIRA_URL}/rest/agile/1.0/board/${boardId}/sprint?state=active`,
       {
-        auth: {
-          username: process.env.JIRA_EMAIL!,
-          password: process.env.JIRA_API_TOKEN!,
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/json',
         },
       }
     );
+
     const activeSprints = res.data.values;
     if (activeSprints.length > 0) {
       return activeSprints[0].id;

@@ -46,6 +46,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createJiraIssue = createJiraIssue;
+exports.getActiveSprintId = getActiveSprintId;
 exports.attachFileToIssue = attachFileToIssue;
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -65,6 +66,30 @@ function createJiraIssue(data) {
         });
         console.log(JSON.stringify(res.data, null, 2));
         return res.data;
+    });
+}
+function getActiveSprintId() {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            const boardId = process.env.JIRA_BOARD_ID;
+            const auth = Buffer.from(`${process.env.JIRA_EMAIL}:${process.env.JIRA_API_TOKEN}`).toString('base64');
+            const res = yield axios_1.default.get(`${process.env.JIRA_URL}/rest/agile/1.0/board/${boardId}/sprint?state=active`, {
+                headers: {
+                    Authorization: `Basic ${auth}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            const activeSprints = res.data.values;
+            if (activeSprints.length > 0) {
+                return activeSprints[0].id;
+            }
+            return null;
+        }
+        catch (error) {
+            console.error('Не вдалося отримати активний спринт', ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error);
+            return null;
+        }
     });
 }
 function attachFileToIssue(issueKey, fileBuffer, filename) {

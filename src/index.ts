@@ -54,12 +54,12 @@ bot.on('message', async (msg: Message, metadata: Metadata) => {
       await attachFileToIssue(issueKey, fileRes.data, (file as any).file_name || 'file.jpg');
     }
 
-    await bot.sendMessage(msg.chat.id, `✅ Створено задачу в Jira: ${issueKey}\n👉${process.env.JIRA_URL}/browse/${issueKey}`);
-    await bot.sendSticker(msg.chat.id, `CAACAgEAAxkBAAEOX_poDlp4q9qtZbx6JtYFCePuUDrxPwACgwEAAnY3dj8x5r4EoeawcTYE`);
+    await bot.sendMessage(msg.chat.id, `✅ Створено задачу в Jira: ${issueKey}\n👉${process.env.JIRA_URL}/browse/${issueKey}`, {message_thread_id: msg.message_thread_id});
+    await bot.sendSticker(msg.chat.id, `CAACAgEAAxkBAAEOX_poDlp4q9qtZbx6JtYFCePuUDrxPwACgwEAAnY3dj8x5r4EoeawcTYE`, {message_thread_id: msg.message_thread_id});
   } catch (error: any) {
     console.error(error.response?.data || error);
-    await bot.sendMessage(msg.chat.id, `❌ Не вдалося створити задачу.\n${JSON.stringify(error.response?.data.errors)}`);
-    await bot.sendSticker(msg.chat.id, 'CAACAgEAAxkBAAEOYAABaA5fv4UQMwABj3mJJaJ6GNQDe3YrAAKEAQACdjd2P-GcU4Z766ifNgQ')
+    await bot.sendMessage(msg.chat.id, `❌ Не вдалося створити задачу.\n${JSON.stringify(error.response?.data.errors)}`, {message_thread_id: msg.message_thread_id});
+    await bot.sendSticker(msg.chat.id, 'CAACAgEAAxkBAAEOYAABaA5fv4UQMwABj3mJJaJ6GNQDe3YrAAKEAQACdjd2P-GcU4Z766ifNgQ', {message_thread_id: msg.message_thread_id})
   }
 });
 
