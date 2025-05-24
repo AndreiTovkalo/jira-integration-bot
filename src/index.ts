@@ -1,25 +1,28 @@
-import TelegramBot, {Message, Metadata} from 'node-telegram-bot-api';
+import TelegramBot, { Message } from 'node-telegram-bot-api';
 import axios from 'axios';
-import {createJiraIssue, attachFileToIssue, getActiveSprintId} from './jira';
-import {parseSmartMessage} from "./parser";
-
+import { createJiraIssue, attachFileToIssue, getActiveSprintId } from './jira';
+import { parseSmartMessage } from './parser';
 
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN!, { polling: true });
 
-bot.on('message', async (msg: Message, metadata: Metadata) => {
-  console.log(JSON.stringify(metadata))
-  console.log(JSON.stringify(msg));
-  if (!msg.text?.toLowerCase().startsWith('task:') && !msg.caption?.toLowerCase().startsWith("task:") && !msg.text?.startsWith('/')) return;
+bot.on('message', async (msg: Message) => {
+  if (
+    !msg.text?.toLowerCase().startsWith('task:') &&
+    !msg.caption?.toLowerCase().startsWith('task:') &&
+    !msg.text?.startsWith('/')
+  ) return;
 
+  console.log(`Incoming message from @${msg.from?.username}: ${msg.text || msg.caption}`);
 
   const task = parseSmartMessage(msg.text ? msg.text : msg.caption!);
   const sprintId = await getActiveSprintId();
+
   const issueData = {
     fields: {
       project: { key: process.env.JIRA_PROJECT_KEY },
       summary: task.title,
       issuetype: { name: task.issueType },
-      priority: { name: task.priority },
+      ...(task.issueType !== 'Task' && { priority: { name: task.priority } }),
       labels: task.labels,
       description: {
         type: 'doc',
@@ -30,36 +33,51 @@ bot.on('message', async (msg: Message, metadata: Metadata) => {
             content: [
               {
                 type: 'text',
-                text: `Created by @${msg.from?.username}`
-              }
-            ]
-          }
-        ]
+                text: `Created by @${msg.from?.username}`,
+              },
+            ],
+          },
+        ],
       },
-        ...(sprintId && {'customfield_10020': sprintId})
-    }
+      ...(sprintId && { 'customfield_10020': sprintId }),
+    },
   } as any;
 
   if (task.assignee) {
     issueData.fields.assignee = { id: task.assignee };
   }
+
+  console.log(`Parsed task:\n${JSON.stringify(task, null, 2)}`);
+  console.log(`Sprint ID: ${sprintId}`);
+  console.log(`Jira payload:\n${JSON.stringify(issueData, null, 2)}`);
+
   try {
     const result = await createJiraIssue(issueData);
     const issueKey = result.key;
+    console.log(`Created Jira issue: ${issueKey}`);
+
     const file = msg.document || (msg.photo && msg.photo.at(-1));
     if (file) {
       const fileLink = await bot.getFileLink(file.file_id);
       const fileRes = await axios.get(fileLink, { responseType: 'stream' });
 
       await attachFileToIssue(issueKey, fileRes.data, (file as any).file_name || 'file.jpg');
+      console.log(`Attached file: ${(file as any).file_name || 'file.jpg'}`);
     }
 
-    await bot.sendMessage(msg.chat.id, `✅ Створено задачу в Jira: ${issueKey}\n👉${process.env.JIRA_URL}/browse/${issueKey}`, {message_thread_id: msg.message_thread_id});
-    await bot.sendSticker(msg.chat.id, `CAACAgEAAxkBAAEOX_poDlp4q9qtZbx6JtYFCePuUDrxPwACgwEAAnY3dj8x5r4EoeawcTYE`, {message_thread_id: msg.message_thread_id});
+    const messageText = `✅ Створено задачу в Jira: ${issueKey}\n👉${process.env.JIRA_URL}/browse/${issueKey}`;
+    const options = msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {};
+
+    await bot.sendMessage(msg.chat.id, messageText, options);
   } catch (error: any) {
-    console.error(error.response?.data || error);
-    await bot.sendMessage(msg.chat.id, `❌ Не вдалося створити задачу.\n${JSON.stringify(error.response?.data.errors)}`, {message_thread_id: msg.message_thread_id});
-    await bot.sendSticker(msg.chat.id, 'CAACAgEAAxkBAAEOYAABaA5fv4UQMwABj3mJJaJ6GNQDe3YrAAKEAQACdjd2P-GcU4Z766ifNgQ', {message_thread_id: msg.message_thread_id})
+    const errorText = error.response?.data?.errors
+      ? JSON.stringify(error.response.data.errors)
+      : JSON.stringify(error.response?.data || error.message || error);
+
+    console.error(`Jira error:\n${errorText}`);
+
+    const options = msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {};
+
+    await bot.sendMessage(msg.chat.id, `❌ Не вдалося створити задачу.\n${errorText}`, options);
   }
 });
-
